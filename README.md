@@ -1,2 +1,2 @@
 # Delphi-Deploy-manager
-App to handle files for Android
+App to handle deployment of files for Android. 
