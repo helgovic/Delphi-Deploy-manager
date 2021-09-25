@@ -75,10 +75,12 @@ type
     procedure SBSearchKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure LEFilterChange(Sender: TObject);
     procedure BClearFilterClick(Sender: TObject);
+    procedure CBFilterColChange(Sender: TObject);
   private
     procedure LoadFiles;
     procedure ShowASMDMessage(Mess: String);
     procedure AddMessButton(Capt: String; ButtRes: integer);
+    procedure ApplyFilter;
     { Private declarations }
   public
     { Public declarations }
@@ -132,7 +134,9 @@ begin
       begin
          JvGridFilter1.Grid := SGAndroid64;
          LETargetDir.Items.Add('library\lib\arm64-v8a');
-      end
+      end;
+
+   ApplyFilter;
 
 end;
 
@@ -207,6 +211,9 @@ begin
 
       end;
 
+   LEFilter.Text := '';
+   JvGridFilter1.ShowRows;
+
 end;
 
 procedure TFormMain.BAddFolderClick(Sender: TObject);
@@ -276,6 +283,9 @@ begin
          LETargetDir.Text := '.\';
 
       end;
+
+   LEFilter.Text := '';
+   JvGridFilter1.ShowRows;
 
 end;
 
@@ -383,6 +393,9 @@ begin
             end;
 
       end;
+
+   LEFilter.Text := '';
+   JvGridFilter1.ShowRows;
 
 end;
 
@@ -492,6 +505,22 @@ begin
 
 end;
 
+procedure TFormMain.ApplyFilter;
+begin
+
+   if LEFilter.Text <> ''
+   then
+      JvGridFilter1.Filter('[' + CBFilterCol.Text + '] like "' + LEFilter.Text + '"')
+   else
+      JvGridFilter1.ShowRows;
+
+end;
+
+procedure TFormMain.CBFilterColChange(Sender: TObject);
+begin
+   ApplyFilter;
+end;
+
 procedure TFormMain.CBIncludeClick(Sender: TObject);
 
 var
@@ -550,7 +579,7 @@ end;
 
 procedure TFormMain.LEFilterChange(Sender: TObject);
 begin
-   JvGridFilter1.Filter('[' + CBFilterCol.Text + '] like "' + LEFilter.Text + '"');
+   ApplyFilter;
 end;
 
 procedure TFormMain.LoadFiles;
@@ -582,6 +611,53 @@ begin
                begin
 
                   Readln(ProjFile, Line);
+
+                  if (Pos('<DeployFile', Line) > 0) and
+                     (Pos('Class="File"', Line) > 0)
+                  then
+                     begin
+
+                        FileName := StrBefore('">', StrAfter('<JavaReference Include="', Line));
+
+                        Readln(ProjFile, Line);
+
+                        if Pos('ClassesdexFile64', Line) > 0
+                        then
+                           begin
+
+                              if SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] <> ''
+                              then
+                                 SGAndroid64.RowCount := SGAndroid64.RowCount + 1;
+
+                              SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] := FileName;
+                              SGAndroid64.Cells[3, SGAndroid64.RowCount - 1] := 'NA';
+
+                              SGAndroid64.Cells[1, SGAndroid64.RowCount - 1] := 'NA';
+
+                              SGAndroid64.Cells[4, SGAndroid64.RowCount - 1] := 'NA';
+
+                              SGAndroid64.Cells[2, SGAndroid64.RowCount - 1] := 'NA';
+
+                           end
+                        else
+                           begin
+
+                              if SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] <> ''
+                              then
+                                 SGAndroid32.RowCount := SGAndroid32.RowCount + 1;
+
+                              SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] := FileName;
+                              SGAndroid32.Cells[3, SGAndroid32.RowCount - 1] := 'NA';
+
+                              SGAndroid32.Cells[1, SGAndroid32.RowCount - 1] := 'NA';
+
+                              SGAndroid32.Cells[4, SGAndroid32.RowCount - 1] := 'NA';
+
+                              SGAndroid32.Cells[2, SGAndroid32.RowCount - 1] := 'NA';
+
+                           end
+
+                     end;
 
                   if (Pos('<DeployFile', Line) > 0) and
                      (Pos('Class="File"', Line) > 0)

@@ -24,7 +24,7 @@ object FormMain: TFormMain
     Height = 177
     Align = alTop
     TabOrder = 0
-    ExplicitTop = 2
+    ExplicitLeft = 32
     object Label2: TLabel
       Left = 139
       Top = 115
@@ -361,7 +361,7 @@ object FormMain: TFormMain
       ParentShowHint = False
       ShowHint = True
       TabOrder = 18
-      OnChange = CBConfChange
+      OnChange = CBFilterColChange
     end
     object BClearFilter: TButton
       Left = 895
@@ -477,6 +477,7 @@ object FormMain: TFormMain
         Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSelect]
         TabOrder = 0
         OnSelectCell = SGAndroid32SelectCell
+        ExplicitTop = 1
       end
     end
     object ASPPAndroid64: TAdvSmoothTabPage
