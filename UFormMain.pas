@@ -9,9 +9,17 @@ uses
   Vcl.Grids, JclStrings, System.IOUtils, AdvEdit, AdvEdBtn, AdvFileNameEdit,
   System.ImageList, Vcl.ImgList, Vcl.WinXCtrls, AdvObj, BaseGrid,
   System.Generics.Collections, System.UITypes, AdvSmoothMessageDialog,
-  JvBaseDlg, JvBrowseFolder, JvSelectDirectory, JvGridFilter;
+  JvBaseDlg, JvBrowseFolder, JvSelectDirectory, JvGridFilter, AdvGrid;
 
 type
+
+  TFileRec = record
+    SourcPath: String;
+    TargetDir: String;
+    Configurations: String;
+    RemoteName: String;
+  end;
+
   TFormMain = class(TForm)
     Panel1: TPanel;
     StatusBar1: TStatusBar;
@@ -21,8 +29,6 @@ type
     ASPConf: TAdvSmoothTabPager;
     ASPPAndroid32: TAdvSmoothTabPage;
     ASPPAndroid64: TAdvSmoothTabPage;
-    SGAndroid32: TStringGrid;
-    SGAndroid64: TStringGrid;
     CBInclude: TCheckBox;
     CBConf: TComboBox;
     Label2: TLabel;
@@ -44,11 +50,13 @@ type
     Label1: TLabel;
     OpenDialog2: TOpenDialog;
     JvSelectDirectory1: TJvSelectDirectory;
-    JvGridFilter1: TJvGridFilter;
     LEFilter: TLabeledEdit;
     CBFilterCol: TComboBox;
     Label3: TLabel;
     BClearFilter: TButton;
+    SGAndroid32: TAdvStringGrid;
+    SGAndroid64: TAdvStringGrid;
+    BCompare: TButton;
     procedure BAddFileClick(Sender: TObject);
     procedure BAddFolderClick(Sender: TObject);
     procedure FEProjFileKeyDown(Sender: TObject; var Key: Word;
@@ -76,6 +84,8 @@ type
     procedure LEFilterChange(Sender: TObject);
     procedure BClearFilterClick(Sender: TObject);
     procedure CBFilterColChange(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure BCompareClick(Sender: TObject);
   private
     procedure LoadFiles;
     procedure ShowASMDMessage(Mess: String);
@@ -88,14 +98,14 @@ type
 
 var
   FormMain: TFormMain;
+  Andr32Items: TList<TFileRec>;
+  Andr64Items: TList<TFileRec>;
 
 implementation
 
 {$R *.dfm}
 
-var
-   ProjFile: TextFile;
-   ProjFileOut: TextFile;
+uses UFCompare;
 
 function IsFileInUse(FileName: TFileName): Boolean;
 var
@@ -127,12 +137,10 @@ begin
    if ASPConf.ActivePage = ASPPAndroid32
    then
       begin
-         JvGridFilter1.Grid := SGAndroid32;
          LETargetDir.Items.Add('library\lib\armeabi-v7a');
       end
    else
       begin
-         JvGridFilter1.Grid := SGAndroid64;
          LETargetDir.Items.Add('library\lib\arm64-v8a');
       end;
 
@@ -170,7 +178,10 @@ begin
                         Exit;
                      end;
 
-               SGAndroid32.RowCount := SGAndroid32.RowCount + 1;
+               if SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] <> ''
+               then
+                  SGAndroid32.RowCount := SGAndroid32.RowCount + 1;
+
                SGAndroid32.ScrollBy(0, 9999);
                SGAndroid32.Row := SGAndroid32.RowCount - 1;
                SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] := Path;
@@ -191,7 +202,10 @@ begin
                         Exit;
                      end;
 
-               SGAndroid64.RowCount := SGAndroid64.RowCount + 1;
+               if SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] <> ''
+               then
+                  SGAndroid64.RowCount := SGAndroid64.RowCount + 1;
+
                SGAndroid64.ScrollBy(0, 9999);
                SGAndroid64.Row := SGAndroid64.RowCount - 1;
                SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] := Path;
@@ -212,7 +226,7 @@ begin
       end;
 
    LEFilter.Text := '';
-   JvGridFilter1.ShowRows;
+   ApplyFilter;
 
 end;
 
@@ -223,6 +237,8 @@ var
    i: Integer;
 
 begin
+
+   JvSelectDirectory1.InitialDir := ExtractFilePath(FEProjFile.Text);
 
    if JvSelectDirectory1.Execute
    then
@@ -246,7 +262,10 @@ begin
                         Exit;
                      end;
 
-               SGAndroid32.RowCount := SGAndroid32.RowCount + 1;
+               if SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] <> ''
+               then
+                  SGAndroid32.RowCount := SGAndroid32.RowCount + 1;
+
                SGAndroid32.ScrollBy(0, 9999);
                SGAndroid32.Row := SGAndroid32.RowCount - 1;
                SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] := Path;
@@ -266,7 +285,10 @@ begin
                         Exit;
                      end;
 
-               SGAndroid64.RowCount := SGAndroid64.RowCount + 1;
+               if SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] <> ''
+               then
+                  SGAndroid64.RowCount := SGAndroid64.RowCount + 1;
+
                SGAndroid64.ScrollBy(0, 9999);
                SGAndroid64.Row := SGAndroid64.RowCount - 1;
                SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] := Path;
@@ -285,117 +307,29 @@ begin
       end;
 
    LEFilter.Text := '';
-   JvGridFilter1.ShowRows;
+   ApplyFilter;
 
 end;
 
 procedure TFormMain.BClearFilterClick(Sender: TObject);
 begin
    LEFilter.Text := '';
-   JvGridFilter1.ShowRows;
+   ApplyFilter;
 end;
 
 procedure TFormMain.BDelSelClick(Sender: TObject);
-
-type
-   TGridRow = Record
-     Source: string;
-     Target: string;
-     Conf: string;
-     Subd: string;
-     RemName: String;
-   end;
-
-var
-   i: Integer;
-   GRows: array of TGridRow;
-
 begin
-
-   GRows := nil;
 
    if ASPConf.ActivePage = ASPPAndroid32
    then
-      begin
-
-         for i := 1 to SGAndroid32.RowCount - 1 do
-            if (i < SGAndroid32.Selection.Top) or
-               (i > SGAndroid32.Selection.Bottom) or
-               (SGAndroid32.RowHeights[i] = 0)
-            then
-               begin
-
-                  SetLength(GRows, High(GRows) + 2);
-                  GRows[High(GRows)].Source := SGAndroid32.Cells[0, i];
-                  GRows[High(GRows)].Target := SGAndroid32.Cells[1, i];
-                  GRows[High(GRows)].Conf := SGAndroid32.Cells[3, i];
-                  GRows[High(GRows)].Subd := SGAndroid32.Cells[2, i];
-                  GRows[High(GRows)].RemName := SGAndroid32.Cells[4, i];
-
-               end;
-
-         SGAndroid32.RowCount := 2;
-         SGAndroid32.Rows[1].Clear;
-
-         for i := 0 to High(GRows) do
-            begin
-
-               if SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] <> ''
-               then
-                  SGAndroid32.RowCount := SGAndroid32.RowCount + 1;
-
-               SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] := GRows[i].Source;
-               SGAndroid32.Cells[1, SGAndroid32.RowCount - 1] := GRows[i].Target;
-               SGAndroid32.Cells[3, SGAndroid32.RowCount - 1] := GRows[i].Conf;
-               SGAndroid32.Cells[2, SGAndroid32.RowCount - 1] := GRows[i].Subd;
-               SGAndroid32.Cells[4, SGAndroid32.RowCount - 1] := GRows[i].RemName;
-
-            end;
-
-      end;
+      SGAndroid32.RemoveSelectedRows;
 
    if ASPConf.ActivePage = ASPPAndroid64
    then
-      begin
-
-         for i := 1 to SGAndroid64.RowCount - 1 do
-            if (i < SGAndroid64.Selection.Top) or
-               (i > SGAndroid64.Selection.Bottom) or
-               (SGAndroid64.RowHeights[i] = 0)
-            then
-               begin
-
-                  SetLength(GRows, High(GRows) + 2);
-                  GRows[High(GRows)].Source := SGAndroid64.Cells[0, i];
-                  GRows[High(GRows)].Target := SGAndroid64.Cells[1, i];
-                  GRows[High(GRows)].Conf := SGAndroid64.Cells[3, i];
-                  GRows[High(GRows)].Subd := SGAndroid64.Cells[2, i];
-                  GRows[High(GRows)].RemName := SGAndroid64.Cells[4, i];
-
-               end;
-
-         SGAndroid64.RowCount := 2;
-         SGAndroid64.Rows[1].Clear;
-
-         for i := 0 to High(GRows) do
-            begin
-
-               if SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] <> ''
-               then
-                  SGAndroid64.RowCount := SGAndroid64.RowCount + 1;
-
-               SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] := GRows[i].Source;
-               SGAndroid64.Cells[1, SGAndroid64.RowCount - 1] := GRows[i].Target;
-               SGAndroid64.Cells[3, SGAndroid64.RowCount - 1] := GRows[i].Conf;
-               SGAndroid64.Cells[2, SGAndroid64.RowCount - 1] := GRows[i].Subd;
-               SGAndroid64.Cells[4, SGAndroid64.RowCount - 1] := GRows[i].RemName;
-
-            end;
-
-      end;
+      SGAndroid64.RemoveSelectedRows;
 
    LEFilter.Text := '';
-   JvGridFilter1.ShowRows;
+//   ApplyFilter;
 
 end;
 
@@ -508,11 +442,40 @@ end;
 procedure TFormMain.ApplyFilter;
 begin
 
+   SGAndroid32.FilterActive := False;
+   SGAndroid64.FilterActive := False;
+   SGAndroid32.Filter.Clear;
+   SGAndroid64.Filter.Clear;
+
    if LEFilter.Text <> ''
    then
-      JvGridFilter1.Filter('[' + CBFilterCol.Text + '] like "' + LEFilter.Text + '"')
-   else
-      JvGridFilter1.ShowRows;
+      if ASPConf.ActivePage = ASPPAndroid32
+      then
+         begin
+
+            with SGAndroid32.Filter.Add do
+            begin
+               CaseSensitive := False;
+               Condition := '*' + LEFilter.Text + '*';
+               Column := CBFilterCol.ItemIndex;
+            end;
+
+            SGAndroid32.FilterActive := True;
+
+         end
+      else
+         begin
+
+            with SGAndroid64.Filter.Add do
+            begin
+               CaseSensitive := False;
+               Condition := '*' + LEFilter.Text + '*';
+               Column := CBFilterCol.ItemIndex;
+            end;
+
+            SGAndroid64.FilterActive := True;
+
+         end;
 
 end;
 
@@ -587,12 +550,17 @@ procedure TFormMain.LoadFiles;
 var
    Line: String;
    FileName, Config: String;
+   SLLinesIn: TStringList;
+   i: integer;
 
 begin
 
    FEProjFile.OnChange := nil;
    FEProjFile.Text := StringReplace(FEProjFile.Text, '"', '', [rfReplaceAll]);
    FEProjFile.OnChange := FEProjFileChange;
+
+   SGAndroid32.BeginUpdate;
+   SGAndroid64.BeginUpdate;
 
    if FileExists(FEProjFile.Text)
    then
@@ -601,63 +569,19 @@ begin
          begin
 
             SGAndroid32.RowCount := 2;
+            SGAndroid32.ClearRows(1, 1);
             SGAndroid64.RowCount := 2;
+            SGAndroid64.ClearRows(1, 1);
 
-            AssignFile(ProjFile, FEProjFile.Text);
+            SLLinesIn := TStringList.Create;
+            SLLinesIn.LoadFromFile(FEProjFile.Text);
 
-            Reset(ProjFile);
+            i := 0;
 
-            while not Eof(ProjFile) do
+            while i < SLLinesIn.Count do
                begin
 
-                  Readln(ProjFile, Line);
-
-                  if (Pos('<DeployFile', Line) > 0) and
-                     (Pos('Class="File"', Line) > 0)
-                  then
-                     begin
-
-                        FileName := StrBefore('">', StrAfter('<JavaReference Include="', Line));
-
-                        Readln(ProjFile, Line);
-
-                        if Pos('ClassesdexFile64', Line) > 0
-                        then
-                           begin
-
-                              if SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] <> ''
-                              then
-                                 SGAndroid64.RowCount := SGAndroid64.RowCount + 1;
-
-                              SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] := FileName;
-                              SGAndroid64.Cells[3, SGAndroid64.RowCount - 1] := 'NA';
-
-                              SGAndroid64.Cells[1, SGAndroid64.RowCount - 1] := 'NA';
-
-                              SGAndroid64.Cells[4, SGAndroid64.RowCount - 1] := 'NA';
-
-                              SGAndroid64.Cells[2, SGAndroid64.RowCount - 1] := 'NA';
-
-                           end
-                        else
-                           begin
-
-                              if SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] <> ''
-                              then
-                                 SGAndroid32.RowCount := SGAndroid32.RowCount + 1;
-
-                              SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] := FileName;
-                              SGAndroid32.Cells[3, SGAndroid32.RowCount - 1] := 'NA';
-
-                              SGAndroid32.Cells[1, SGAndroid32.RowCount - 1] := 'NA';
-
-                              SGAndroid32.Cells[4, SGAndroid32.RowCount - 1] := 'NA';
-
-                              SGAndroid32.Cells[2, SGAndroid32.RowCount - 1] := 'NA';
-
-                           end
-
-                     end;
+                  Line := SLLinesIn[i];
 
                   if (Pos('<DeployFile', Line) > 0) and
                      (Pos('Class="File"', Line) > 0)
@@ -666,7 +590,8 @@ begin
 
                         FileName := StrBefore('" Configuration=', StrAfter('LocalName="', Line));
                         Config :=   StrBefore('" Class=', StrAfter('Configuration="', Line));
-                        Readln(ProjFile, Line);
+                        Inc(i);
+                        Line := SLLinesIn[i];
 
                         if Pos('Platform Name="All Platforms"', Line) > 0
                         then
@@ -686,11 +611,15 @@ begin
                               SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] := FileName;
                               SGAndroid64.Cells[3, SGAndroid64.RowCount - 1] := Config;
 
-                              Readln(ProjFile, Line);
+                              Inc(i);
+                              Line := SLLinesIn[i];
+
                               SGAndroid32.Cells[1, SGAndroid32.RowCount - 1] := StrBefore('</RemoteDir>', StrAfter('<RemoteDir>', Line));
                               SGAndroid64.Cells[1, SGAndroid64.RowCount - 1] := StrBefore('</RemoteDir>', StrAfter('<RemoteDir>', Line));
 
-                              Readln(ProjFile, Line);
+                              Inc(i);
+                              Line := SLLinesIn[i];
+
                               SGAndroid32.Cells[4, SGAndroid32.RowCount - 1] := StrBefore('</RemoteName>', StrAfter('<RemoteName>', Line));
                               SGAndroid64.Cells[4, SGAndroid64.RowCount - 1] := StrBefore('</RemoteName>', StrAfter('<RemoteName>', Line));
 
@@ -710,10 +639,14 @@ begin
                                  SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] := FileName;
                                  SGAndroid64.Cells[3, SGAndroid64.RowCount - 1] := Config;
 
-                                 Readln(ProjFile, Line);
+                                 Inc(i);
+                                 Line := SLLinesIn[i];
+
                                  SGAndroid64.Cells[1, SGAndroid64.RowCount - 1] := StrBefore('</RemoteDir>', StrAfter('<RemoteDir>', Line));
 
-                                 Readln(ProjFile, Line);
+                                 Inc(i);
+                                 Line := SLLinesIn[i];
+
                                  SGAndroid64.Cells[4, SGAndroid64.RowCount - 1] := StrBefore('</RemoteName>', StrAfter('<RemoteName>', Line));
 
                                  SGAndroid64.Cells[2, SGAndroid64.RowCount - 1] := 'False';
@@ -731,23 +664,32 @@ begin
                                     SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] := FileName;
                                     SGAndroid32.Cells[3, SGAndroid32.RowCount - 1] := Config;
 
-                                    Readln(ProjFile, Line);
+                                    Inc(i);
+                                    Line := SLLinesIn[i];
+
                                     SGAndroid32.Cells[1, SGAndroid32.RowCount - 1] := StrBefore('</RemoteDir>', StrAfter('<RemoteDir>', Line));
 
-                                    Readln(ProjFile, Line);
+                                    Inc(i);
+                                    Line := SLLinesIn[i];
+
                                     SGAndroid32.Cells[4, SGAndroid32.RowCount - 1] := StrBefore('</RemoteName>', StrAfter('<RemoteName>', Line));
 
                                     SGAndroid32.Cells[2, SGAndroid32.RowCount - 1] := 'False';
 
                                  end;
 
-
-
                      end;
+
+                  Inc(i);
 
                end;
 
          end;
+
+   SGAndroid32.Sort(0,TSortDirection.sdAscending);
+   SGAndroid64.Sort(0,TSortDirection.sdAscending);
+   SGAndroid32.EndUpdate;
+   SGAndroid64.EndUpdate;
 
 end;
 
@@ -805,6 +747,10 @@ begin
    if Key = VK_RETURN
    then
       SBSearchInvokeSearch(Sender);
+
+   if Key = VK_F3
+   then
+      BNextClick(BNext);
 
 end;
 
@@ -935,6 +881,15 @@ begin
 
 end;
 
+procedure TFormMain.FormActivate(Sender: TObject);
+begin
+
+   if ParamCount > 0
+   then
+      FEProjFile.Text := ParamStr(1);
+
+end;
+
 procedure TFormMain.FormCreate(Sender: TObject);
 begin
 
@@ -974,355 +929,383 @@ begin
    CBFilterCol.Items.Add('Remote Name');
    CBFilterCol.ItemIndex := 0;
 
+  Andr32Items := TList<TFileRec>.Create;
+  Andr64Items := TList<TFileRec>.Create;
+
 end;
 
 procedure TFormMain.BSaveClick(Sender: TObject);
 
 var
-   Line, LineOut: String;
-   i, x: Integer;
+   LineOut: String;
+   i, x, y: Integer;
    FullName, ShortName, TmpStr: String;
    FileList: TArray<String>;
+   SaveFile: String;
+   SLLinesIn, SLLINETmp: TStringList;
 
 begin
 
-   Reset(ProjFile);
-   AssignFile(ProjFileOut, ExtractFilePath(FEProjFile.Text) + StrBefore('.dproj', ExtractFileName(FEProjFile.Text)) + 'New.dproj');
-   ReWrite(ProjFileOut);
+   if not DirectoryExists(ExtractFilePath(FEProjFile.Text) + 'Archive')
+   then
+      if not CreateDir(ExtractFilePath(FEProjFile.Text) + 'Archive')
+      then
+        begin
+           ShowMessage('There was an error creating Archive Folder');
+           Exit;
+        end;
 
-   while not Eof(ProjFile) do
+   SaveFile := ExtractFilePath(FEProjFile.Text) + 'Archive\' + StrBefore('.dproj', ExtractFileName(FEProjFile.Text)) + 'DM' + FormatDateTime('yyyymmddhhnnss', Now) + '.dproj';
+   if not CopyFile(PChar(FEProjFile.Text), PChar(SaveFile), False)
+   then
+     begin
+        ShowMessage('There was an error making a backup of the projectfile');
+        Exit;
+     end;
+
+   SLLinesIn := TStringList.Create;
+   SLLINETmp := TStringList.Create;
+
+   SLLinesIn.LoadFromFile(FEProjFile.Text);
+
+   y := 0;
+
+   while Pos('</Deployment>', SLLinesIn[y]) = 0 do
       begin
 
-         Readln(ProjFile, Line);
-
-         if (Pos('<DeployFile', Line) > 0) and
-            (Pos('Class="File"', Line) > 0)
+         if Pos('<DeployFile', SLLinesIn[y]) > 0
          then
-            while Pos('</DeployFile>', Line) = 0 do
-               Readln(ProjFile, Line)
+            if Pos('Class="File"', SLLinesIn[y]) > 0
+            then
+               begin
+
+                  while Pos('</DeployFile>', SLLinesIn[y]) = 0 do
+                     Inc(y);
+
+               end
+            else
+               begin
+
+                  while Pos('</DeployFile>', SLLinesIn[y]) = 0 do
+                     begin
+
+                        SLLINETmp.Add(SLLinesIn[y]);
+
+                        Inc(y);
+
+                     end;
+
+                  SLLINETmp.Add(SLLinesIn[y]);
+
+               end
          else
-            WriteLn(ProjFileOut, Line);
+            SLLINETmp.Add(SLLinesIn[y]);
+
+         Inc(y);
 
       end;
 
-   CloseFile(ProjFile);
-   CloseFile(ProjFileOut);
-
-   AssignFile(ProjFileOut, ExtractFilePath(FEProjFile.Text) + StrBefore('.dproj', ExtractFileName(FEProjFile.Text)) + 'New.dproj');
-   AssignFile(ProjFile, FEProjFile.Text);
-
-   Reset(ProjFileOut);
-   Rewrite(ProjFile);
-
-   while not Eof(ProjFileOut) do
+   for i := 1 to SGAndroid32.RowCount - 1 do
       begin
 
-         Readln(ProjFileOut, Line);
+         if Pos(':\', SGAndroid32.Cells[0, i]) = 0
+         then
+            FullName := ExtractFilePath(FEProjFile.Text) + SGAndroid32.Cells[0, i]
+         else
+            FullName := SGAndroid32.Cells[0, i];
 
-         WriteLn(ProjFile, Line);
-
-         if Pos('<Deployment', Line) > 0
+         if DirectoryExists(FullName)
          then
             begin
 
-               for i := 1 to SGAndroid32.RowCount - 1 do
+               if SGAndroid32.Cells[2, i] = 'True'
+               then
+                  FileList := TDirectory.GetFiles(FullName, '*.*', TSearchOption.soAllDirectories)
+               else
+                  FileList := TDirectory.GetFiles(FullName, '*.*', TSearchOption.soTopDirectoryOnly);
+
+               for x := 0 to High(FileList) do
                   begin
 
-                     if Pos(':\', SGAndroid32.Cells[0, i]) = 0
-                     then
-                        FullName := ExtractFilePath(FEProjFile.Text) + SGAndroid32.Cells[0, i]
-                     else
-                        FullName := SGAndroid32.Cells[0, i];
-
-                     if DirectoryExists(FullName)
+                     if Pos(ExtractFilePath(FEProjFile.Text), FileList[x]) > 0
                      then
                         begin
 
-                           if SGAndroid32.Cells[2, i] = 'True'
+                           TmpStr := ExtractFilePath(FEProjFile.Text) + SGAndroid32.Cells[0, i] + '\';
+                           TmpStr := StrAfter(TmpStr, FileList[x]);
+                           TmpStr := Copy(ExtractFilePath(TmpStr), 1, Length(ExtractFilePath(TmpStr)) - 1);
+
+                           if TmpStr <> ''
                            then
-                              FileList := TDirectory.GetFiles(FullName, '*.*', TSearchOption.soAllDirectories)
+                              TmpStr := SGAndroid32.Cells[1, i] + '\' + TmpStr
                            else
-                              FileList := TDirectory.GetFiles(FullName, '*.*', TSearchOption.soTopDirectoryOnly);
+                              TmpStr := SGAndroid32.Cells[1, i];
 
-                           for x := 0 to High(FileList) do
-                              begin
-
-                                 if Pos(ExtractFilePath(FEProjFile.Text), FileList[x]) > 0
-                                 then
-                                    begin
-
-                                       TmpStr := ExtractFilePath(FEProjFile.Text) + SGAndroid32.Cells[0, i] + '\';
-                                       TmpStr := StrAfter(TmpStr, FileList[x]);
-                                       TmpStr := Copy(ExtractFilePath(TmpStr), 1, Length(ExtractFilePath(TmpStr)) - 1);
-
-                                       if TmpStr <> ''
-                                       then
-                                          TmpStr := SGAndroid32.Cells[1, i] + '\' + TmpStr
-                                       else
-                                          TmpStr := SGAndroid32.Cells[1, i];
-
-                                       ShortName := StrAfter(ExtractFilePath(FEProjFile.Text), FileList[x]);
-
-                                    end
-                                 else
-                                    begin
-
-                                       TmpStr := StrAfter(SGAndroid32.Cells[0, i] + '\', FileList[x]);
-                                       TmpStr := Copy(ExtractFilePath(TmpStr), 1, Length(ExtractFilePath(TmpStr)) - 1);
-
-                                       if TmpStr <> ''
-                                       then
-                                          TmpStr := SGAndroid32.Cells[1, i] + '\' + TmpStr
-                                       else
-                                          TmpStr := SGAndroid32.Cells[1, i];
-
-                                       ShortName := FileList[x];
-
-                                    end;
-
-                                 if (SGAndroid32.Cells[3, i] = 'All') or
-                                    (SGAndroid32.Cells[3, i] = 'Debug')
-                                 then
-                                    begin
-                                       LineOut := '                <DeployFile LocalName="' + ShortName + '" Configuration="Debug" Class="File">';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                    <Platform Name="Android">';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                        <RemoteDir>' + TmpStr + '</RemoteDir>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                        <RemoteName>' + ExtractFileName(ShortName) + '</RemoteName>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                        <Overwrite>true</Overwrite>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                    </Platform>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                </DeployFile>';
-                                       WriteLn(ProjFile, LineOut);
-                                    end;
-
-                                 if (SGAndroid32.Cells[3, i] = 'All') or
-                                    (SGAndroid32.Cells[3, i] = 'Release')
-                                 then
-                                    begin
-                                       LineOut := '                <DeployFile LocalName="' + ShortName + '" Configuration="Release" Class="File">';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                    <Platform Name="Android">';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                        <RemoteDir>' + TmpStr + '</RemoteDir>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                        <RemoteName>' + ExtractFileName(ShortName) + '</RemoteName>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                        <Overwrite>true</Overwrite>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                    </Platform>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                </DeployFile>';
-                                       WriteLn(ProjFile, LineOut);
-                                    end;
-
-                              end;
+                           ShortName := StrAfter(ExtractFilePath(FEProjFile.Text), FileList[x]);
 
                         end
                      else
                         begin
 
-                           if (SGAndroid32.Cells[3, i] = 'All') or
-                              (SGAndroid32.Cells[3, i] = 'Debug')
-                           then
-                              begin
-                                 LineOut := '                <DeployFile LocalName="' + SGAndroid32.Cells[0, i] + '" Configuration="Debug" Class="File">';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                    <Platform Name="Android">';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                        <RemoteDir>' + SGAndroid32.Cells[1, i] + '</RemoteDir>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                        <RemoteName>' + SGAndroid32.Cells[4, i] + '</RemoteName>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                        <Overwrite>true</Overwrite>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                    </Platform>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                </DeployFile>';
-                                 WriteLn(ProjFile, LineOut);
-                              end;
+                           TmpStr := StrAfter(SGAndroid32.Cells[0, i] + '\', FileList[x]);
+                           TmpStr := Copy(ExtractFilePath(TmpStr), 1, Length(ExtractFilePath(TmpStr)) - 1);
 
-                           if (SGAndroid32.Cells[3, i] = 'All') or
-                              (SGAndroid32.Cells[3, i] = 'Release')
+                           if TmpStr <> ''
                            then
-                              begin
-                                 LineOut := '                <DeployFile LocalName="' + SGAndroid32.Cells[0, i] + '" Configuration="Release" Class="File">';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                    <Platform Name="Android">';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                        <RemoteDir>' + SGAndroid32.Cells[1, i] + '</RemoteDir>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                        <RemoteName>' + SGAndroid32.Cells[4, i] + '</RemoteName>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                        <Overwrite>true</Overwrite>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                    </Platform>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                </DeployFile>';
-                                 WriteLn(ProjFile, LineOut);
-                              end;
+                              TmpStr := SGAndroid32.Cells[1, i] + '\' + TmpStr
+                           else
+                              TmpStr := SGAndroid32.Cells[1, i];
 
+                           ShortName := FileList[x];
+
+                        end;
+
+                     if (SGAndroid32.Cells[3, i] = 'All') or
+                        (SGAndroid32.Cells[3, i] = 'Debug')
+                     then
+                        begin
+
+                           LineOut := '                <DeployFile LocalName="' + ShortName + '" Configuration="Debug" Class="File">';
+                           SLLINETmp.Add(LineOut);
+                           LineOut := '                    <Platform Name="Android">';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                        <RemoteDir>' + TmpStr + '</RemoteDir>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                        <RemoteName>' + ExtractFileName(ShortName) + '</RemoteName>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                        <Overwrite>true</Overwrite>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                    </Platform>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                </DeployFile>';
+                           SLLINETmp.Add(LineOut);;
+                        end;
+
+                     if (SGAndroid32.Cells[3, i] = 'All') or
+                        (SGAndroid32.Cells[3, i] = 'Release')
+                     then
+                        begin
+                           LineOut := '                <DeployFile LocalName="' + ShortName + '" Configuration="Release" Class="File">';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                    <Platform Name="Android">';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                        <RemoteDir>' + TmpStr + '</RemoteDir>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                        <RemoteName>' + ExtractFileName(ShortName) + '</RemoteName>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                        <Overwrite>true</Overwrite>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                    </Platform>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                </DeployFile>';
+                           SLLINETmp.Add(LineOut);;
                         end;
 
                   end;
 
-               for i := 1 to SGAndroid64.RowCount - 1 do
+            end
+         else
+            begin
+
+               if (SGAndroid32.Cells[3, i] = 'All') or
+                  (SGAndroid32.Cells[3, i] = 'Debug')
+               then
                   begin
+                     LineOut := '                <DeployFile LocalName="' + SGAndroid32.Cells[0, i] + '" Configuration="Debug" Class="File">';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                    <Platform Name="Android">';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                        <RemoteDir>' + SGAndroid32.Cells[1, i] + '</RemoteDir>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                        <RemoteName>' + SGAndroid32.Cells[4, i] + '</RemoteName>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                        <Overwrite>true</Overwrite>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                    </Platform>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                </DeployFile>';
+                     SLLINETmp.Add(LineOut);;
+                  end;
 
-                     if Pos(':\', SGAndroid64.Cells[0, i]) = 0
-                     then
-                        FullName := ExtractFilePath(FEProjFile.Text) + SGAndroid64.Cells[0, i]
-                     else
-                        FullName := SGAndroid64.Cells[0, i];
-
-                     if DirectoryExists(FullName)
-                     then
-                        begin
-
-                           if SGAndroid64.Cells[2, i] = 'True'
-                           then
-                              FileList := TDirectory.GetFiles(FullName, '*.*', TSearchOption.soAllDirectories)
-                           else
-                              FileList := TDirectory.GetFiles(FullName, '*.*', TSearchOption.soTopDirectoryOnly);
-
-                           for x := 0 to High(FileList) do
-                              begin
-
-                                 if Pos(ExtractFilePath(FEProjFile.Text), FileList[x]) > 0
-                                 then
-                                    begin
-
-                                       TmpStr := ExtractFilePath(FEProjFile.Text) + SGAndroid64.Cells[0, i] + '\';
-                                       TmpStr := StrAfter(TmpStr, FileList[x]);
-                                       TmpStr := Copy(ExtractFilePath(TmpStr), 1, Length(ExtractFilePath(TmpStr)) - 1);
-
-                                       if TmpStr <> ''
-                                       then
-                                          TmpStr := SGAndroid64.Cells[1, i] + '\' + TmpStr
-                                       else
-                                          TmpStr := SGAndroid64.Cells[1, i];
-
-                                       ShortName := StrAfter(ExtractFilePath(FEProjFile.Text), FileList[x]);
-
-                                    end
-                                 else
-                                    begin
-
-                                       TmpStr := StrAfter(SGAndroid64.Cells[0, i] + '\', FileList[x]);
-                                       TmpStr := Copy(ExtractFilePath(TmpStr), 1, Length(ExtractFilePath(TmpStr)) - 1);
-
-                                       if TmpStr <> ''
-                                       then
-                                          TmpStr := SGAndroid64.Cells[1, i] + '\' + TmpStr
-                                       else
-                                          TmpStr := SGAndroid64.Cells[1, i];
-
-                                       ShortName := FileList[x];
-
-                                    end;
-
-                                 if (SGAndroid64.Cells[3, i] = 'All') or
-                                    (SGAndroid64.Cells[3, i] = 'Debug')
-                                 then
-                                    begin
-                                       LineOut := '                <DeployFile LocalName="' + ShortName + '" Configuration="Debug" Class="File">';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                    <Platform Name="Android64">';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                        <RemoteDir>' + TmpStr + '</RemoteDir>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                        <RemoteName>' + ExtractFileName(ShortName) + '</RemoteName>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                        <Overwrite>true</Overwrite>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                    </Platform>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                </DeployFile>';
-                                       WriteLn(ProjFile, LineOut);
-                                    end;
-
-                                 if (SGAndroid64.Cells[3, i] = 'All') or
-                                    (SGAndroid64.Cells[3, i] = 'Release')
-                                 then
-                                    begin
-                                       LineOut := '                <DeployFile LocalName="' + ShortName + '" Configuration="Release" Class="File">';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                    <Platform Name="Android64">';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                        <RemoteDir>' + TmpStr + '</RemoteDir>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                        <RemoteName>' + ExtractFileName(ShortName) + '</RemoteName>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                        <Overwrite>true</Overwrite>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                    </Platform>';
-                                       WriteLn(ProjFile, LineOut);
-                                       LineOut := '                </DeployFile>';
-                                       WriteLn(ProjFile, LineOut);
-                                    end;
-
-                              end;
-
-                        end
-                     else
-                        begin
-
-                           if (SGAndroid64.Cells[3, i] = 'All') or
-                              (SGAndroid64.Cells[3, i] = 'Debug')
-                           then
-                              begin
-                                 LineOut := '                <DeployFile LocalName="' + SGAndroid64.Cells[0, i] + '" Configuration="Debug" Class="File">';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                    <Platform Name="Android64">';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                        <RemoteDir>' + SGAndroid64.Cells[1, i] + '</RemoteDir>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                        <RemoteName>' + SGAndroid64.Cells[4, i] + '</RemoteName>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                        <Overwrite>true</Overwrite>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                    </Platform>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                </DeployFile>';
-                                 WriteLn(ProjFile, LineOut);
-                              end;
-
-                           if (SGAndroid64.Cells[3, i] = 'All') or
-                              (SGAndroid64.Cells[3, i] = 'Release')
-                           then
-                              begin
-                                 LineOut := '                <DeployFile LocalName="' + SGAndroid64.Cells[0, i] + '" Configuration="Release" Class="File">';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                    <Platform Name="Android64">';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                        <RemoteDir>' + SGAndroid64.Cells[1, i] + '</RemoteDir>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                        <RemoteName>' + SGAndroid64.Cells[4, i] + '</RemoteName>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                        <Overwrite>true</Overwrite>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                    </Platform>';
-                                 WriteLn(ProjFile, LineOut);
-                                 LineOut := '                </DeployFile>';
-                                 WriteLn(ProjFile, LineOut);
-                              end;
-
-                        end;
-
+               if (SGAndroid32.Cells[3, i] = 'All') or
+                  (SGAndroid32.Cells[3, i] = 'Release')
+               then
+                  begin
+                     LineOut := '                <DeployFile LocalName="' + SGAndroid32.Cells[0, i] + '" Configuration="Release" Class="File">';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                    <Platform Name="Android">';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                        <RemoteDir>' + SGAndroid32.Cells[1, i] + '</RemoteDir>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                        <RemoteName>' + SGAndroid32.Cells[4, i] + '</RemoteName>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                        <Overwrite>true</Overwrite>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                    </Platform>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                </DeployFile>';
+                     SLLINETmp.Add(LineOut);;
                   end;
 
             end;
 
       end;
 
-   CloseFile(ProjFile);
-   CloseFile(ProjFileOut);
-   DeleteFile(ExtractFilePath(FEProjFile.Text) + StrBefore('.dproj', ExtractFileName(FEProjFile.Text)) + 'New.dproj');
-   ShowASMDMessage('Done');
+   for i := 1 to SGAndroid64.RowCount - 1 do
+      begin
+
+         if Pos(':\', SGAndroid64.Cells[0, i]) = 0
+         then
+            FullName := ExtractFilePath(FEProjFile.Text) + SGAndroid64.Cells[0, i]
+         else
+            FullName := SGAndroid64.Cells[0, i];
+
+         if DirectoryExists(FullName)
+         then
+            begin
+
+               if SGAndroid64.Cells[2, i] = 'True'
+               then
+                  FileList := TDirectory.GetFiles(FullName, '*.*', TSearchOption.soAllDirectories)
+               else
+                  FileList := TDirectory.GetFiles(FullName, '*.*', TSearchOption.soTopDirectoryOnly);
+
+               for x := 0 to High(FileList) do
+                  begin
+
+                     if Pos(ExtractFilePath(FEProjFile.Text), FileList[x]) > 0
+                     then
+                        begin
+
+                           TmpStr := ExtractFilePath(FEProjFile.Text) + SGAndroid64.Cells[0, i] + '\';
+                           TmpStr := StrAfter(TmpStr, FileList[x]);
+                           TmpStr := Copy(ExtractFilePath(TmpStr), 1, Length(ExtractFilePath(TmpStr)) - 1);
+
+                           if TmpStr <> ''
+                           then
+                              TmpStr := SGAndroid64.Cells[1, i] + '\' + TmpStr
+                           else
+                              TmpStr := SGAndroid64.Cells[1, i];
+
+                           ShortName := StrAfter(ExtractFilePath(FEProjFile.Text), FileList[x]);
+
+                        end
+                     else
+                        begin
+
+                           TmpStr := StrAfter(SGAndroid64.Cells[0, i] + '\', FileList[x]);
+                           TmpStr := Copy(ExtractFilePath(TmpStr), 1, Length(ExtractFilePath(TmpStr)) - 1);
+
+                           if TmpStr <> ''
+                           then
+                              TmpStr := SGAndroid64.Cells[1, i] + '\' + TmpStr
+                           else
+                              TmpStr := SGAndroid64.Cells[1, i];
+
+                           ShortName := FileList[x];
+
+                        end;
+
+                     if (SGAndroid64.Cells[3, i] = 'All') or
+                        (SGAndroid64.Cells[3, i] = 'Debug')
+                     then
+                        begin
+                           LineOut := '                <DeployFile LocalName="' + ShortName + '" Configuration="Debug" Class="File">';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                    <Platform Name="Android64">';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                        <RemoteDir>' + TmpStr + '</RemoteDir>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                        <RemoteName>' + ExtractFileName(ShortName) + '</RemoteName>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                        <Overwrite>true</Overwrite>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                    </Platform>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                </DeployFile>';
+                           SLLINETmp.Add(LineOut);;
+                        end;
+
+                     if (SGAndroid64.Cells[3, i] = 'All') or
+                        (SGAndroid64.Cells[3, i] = 'Release')
+                     then
+                        begin
+                           LineOut := '                <DeployFile LocalName="' + ShortName + '" Configuration="Release" Class="File">';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                    <Platform Name="Android64">';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                        <RemoteDir>' + TmpStr + '</RemoteDir>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                        <RemoteName>' + ExtractFileName(ShortName) + '</RemoteName>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                        <Overwrite>true</Overwrite>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                    </Platform>';
+                           SLLINETmp.Add(LineOut);;
+                           LineOut := '                </DeployFile>';
+                           SLLINETmp.Add(LineOut);;
+                        end;
+
+                  end;
+
+            end
+         else
+            begin
+
+               if (SGAndroid64.Cells[3, i] = 'All') or
+                  (SGAndroid64.Cells[3, i] = 'Debug')
+               then
+                  begin
+                     LineOut := '                <DeployFile LocalName="' + SGAndroid64.Cells[0, i] + '" Configuration="Debug" Class="File">';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                    <Platform Name="Android64">';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                        <RemoteDir>' + SGAndroid64.Cells[1, i] + '</RemoteDir>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                        <RemoteName>' + SGAndroid64.Cells[4, i] + '</RemoteName>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                        <Overwrite>true</Overwrite>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                    </Platform>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                </DeployFile>';
+                     SLLINETmp.Add(LineOut);;
+                  end;
+
+               if (SGAndroid64.Cells[3, i] = 'All') or
+                  (SGAndroid64.Cells[3, i] = 'Release')
+               then
+                  begin
+                     LineOut := '                <DeployFile LocalName="' + SGAndroid64.Cells[0, i] + '" Configuration="Release" Class="File">';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                    <Platform Name="Android64">';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                        <RemoteDir>' + SGAndroid64.Cells[1, i] + '</RemoteDir>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                        <RemoteName>' + SGAndroid64.Cells[4, i] + '</RemoteName>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                        <Overwrite>true</Overwrite>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                    </Platform>';
+                     SLLINETmp.Add(LineOut);;
+                     LineOut := '                </DeployFile>';
+                     SLLINETmp.Add(LineOut);;
+                  end;
+
+            end;
+
+      end;
+
+   while y < SLLInesin.Count do
+      begin
+
+         SLLINETmp.Add(SLLinesIn[y]);
+         Inc(y);
+
+      end;
+
+   SLLINETmp.SaveToFile(FEProjFile.Text);
+   ShowASMDMessage('Done. Backup of project file located in ' + SaveFile);
 
 end;
 
@@ -1474,27 +1457,14 @@ begin
 end;
 
 procedure TFormMain.BTransferClick(Sender: TObject);
-
-type
-   TGridRow = Record
-     Source: string;
-     Target: string;
-     Conf: string;
-     Subd: string;
-     RemName: String;
-   end;
-
 var
    i, x, z: Integer;
    OverRideAll, SkipAll, OverRideFile, Skip: Boolean;
-   GRows: TList<TGridRow>;
-   GRow: TGridRow;
 
 begin
 
    OverRideAll := False;
    SkipAll := False;
-   GRows := TList<TGridRow>.Create;
 
    AdvSmoothMessageDialog1.Buttons.Clear;
 
@@ -1508,37 +1478,22 @@ begin
    then
       begin
 
-         for i := 1 to SGAndroid64.RowCount - 1 do
-            begin
+         SGAndroid64.BeginUpdate;
 
-               GRow.Source := SGAndroid64.Cells[0, i];
-               GRow.Target := SGAndroid64.Cells[1, i];
-               GRow.Conf := SGAndroid64.Cells[3, i];
-               GRow.Subd := SGAndroid64.Cells[2, i];
-               GRow.RemName := SGAndroid64.Cells[4, i];
-
-               GRows.Add(GRow);
-
-            end;
-
-         for i := 1 to SGAndroid32.RowCount - 1 do
-            if (i >= SGAndroid32.Selection.Top) and
-               (i <= SGAndroid32.Selection.Bottom) and
-               (SGAndroid32.RowHeights[i] <> 0)
-            then
+         for i := 0 to SGAndroid32.SelectedRowCount - 1  do
                begin
 
                   Skip := False;
                   OverRideFile := False;
 
-                  for x := 0 to GRows.Count - 1 do
-                     if GRows[x].Source = SGAndroid32.Cells[0, i]
+                  for x := 1 to SGAndroid64.RowCount - 1 do
+                     if SGAndroid64.Cells[0, x] = SGAndroid32.Cells[0, SGAndroid32.SelectedRow[i]]
                      then
-                        if ((SGAndroid32.Cells[3, i] = 'All') and
-                            ((GRows[x].Conf = 'All') or
-                             (GRows[x].Conf = 'Release') or
-                             (GRows[x].Conf = 'Debug'))) or
-                           (GRows[x].Conf = SGAndroid32.Cells[3, i])
+                        if ((SGAndroid32.Cells[3, SGAndroid32.SelectedRow[i]] = 'All') and
+                            ((SGAndroid64.Cells[3, x] = 'All') or
+                             (SGAndroid64.Cells[3, x] = 'Release') or
+                             (SGAndroid64.Cells[3, x] = 'Debug'))) or
+                           (SGAndroid64.Cells[3, x] = SGAndroid32.Cells[3, SGAndroid32.SelectedRow[i]])
                         then
                            begin
 
@@ -1552,15 +1507,12 @@ begin
                                  else
                                     begin
 
-                                       AdvSmoothMessageDialog1.HTMLText.Text := 'Source Path "' + GRows[x].Source + '" for ' + GRows[x].Conf + ' configuration allready exist';
+                                       AdvSmoothMessageDialog1.HTMLText.Text := 'Source Path "' + SGAndroid64.Cells[0, x] + '" for ' + SGAndroid64.Cells[3, x] + ' configuration allready exist';
 
                                        case AdvSmoothMessageDialog1.ExecuteDialog of
 
                                           104:
-                                             begin
-                                                GRows.DisposeOf;
-                                                Exit;
-                                             end;
+                                             Exit;
 
                                           100: OverRideFile := True;
 
@@ -1594,48 +1546,39 @@ begin
                   then
                      begin
 
-                        for x := GRows.Count - 1 downto 0 do
-                           if GRows[x].Source = SGAndroid32.Cells[0, i]
+                        for x := SGAndroid64.RowCount - 1 downto 1 do
+                           if SGAndroid64.Cells[0, x] = SGAndroid32.Cells[0, SGAndroid32.SelectedRow[i]]
                            then
-                              if ((SGAndroid32.Cells[3, i] = 'All') and
-                                  ((GRows[x].Conf = 'All') or
-                                   (GRows[x].Conf = 'Release') or
-                                   (GRows[x].Conf = 'Debug'))) or
-                                 (GRows[x].Conf = SGAndroid32.Cells[3, i])
+                              if ((SGAndroid32.Cells[3, SGAndroid32.SelectedRow[i]] = 'All') and
+                                  ((SGAndroid64.Cells[3, x] = 'All') or
+                                   (SGAndroid64.Cells[3, x] = 'Release') or
+                                   (SGAndroid64.Cells[3, x] = 'Debug'))) or
+                                 (SGAndroid64.Cells[3, x] = SGAndroid32.Cells[3, SGAndroid32.SelectedRow[i]])
                               then
-                                 GRows.Delete(x);
+                                 SGAndroid64.RemoveRows(x, 1);
 
                      end;
 
-                  GRow.Source := SGAndroid32.Cells[0, i];
-                  GRow.Target := SGAndroid32.Cells[1, i];
-                  GRow.Conf := SGAndroid32.Cells[3, i];
-                  GRow.Subd := SGAndroid32.Cells[2, i];
-                  GRow.RemName := SGAndroid32.Cells[4, i];
+                  if SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] <> ''
+                  then
+                     SGAndroid64.AddRow;
 
-                  GRows.Add(GRow);
+                  SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] := SGAndroid32.Cells[0, SGAndroid32.SelectedRow[i]];
+
+                  if SGAndroid32.Cells[1, SGAndroid32.SelectedRow[i]] = 'library\lib\armeabi-v7a'
+                  then
+                     SGAndroid64.Cells[1, SGAndroid64.RowCount - 1] := 'library\lib\arm64-v8a'
+                  else
+                     SGAndroid64.Cells[1, SGAndroid64.RowCount - 1] := SGAndroid32.Cells[1, SGAndroid32.SelectedRow[i]];
+
+                  SGAndroid64.Cells[2, SGAndroid64.RowCount - 1] := SGAndroid32.Cells[2, SGAndroid32.SelectedRow[i]];
+                  SGAndroid64.Cells[3, SGAndroid64.RowCount - 1] := SGAndroid32.Cells[3, SGAndroid32.SelectedRow[i]];
+                  SGAndroid64.Cells[4, SGAndroid64.RowCount - 1] := SGAndroid32.Cells[4, SGAndroid32.SelectedRow[i]];
 
                end;
 
-         SGAndroid64.RowCount := 2;
-         SGAndroid64.Rows[1].Clear;
-
-         for x := 0 to GRows.Count - 1 do
-            begin
-
-               if SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] <> ''
-               then
-                  SGAndroid64.RowCount := SGAndroid64.RowCount + 1;
-
-               SGAndroid64.Cells[0, SGAndroid64.RowCount - 1] := GRows[x].Source;
-               SGAndroid64.Cells[1, SGAndroid64.RowCount - 1] := GRows[x].Target;
-               SGAndroid64.Cells[3, SGAndroid64.RowCount - 1] := GRows[x].Conf;
-               SGAndroid64.Cells[2, SGAndroid64.RowCount - 1] := GRows[x].Subd;
-               SGAndroid64.Cells[4, SGAndroid64.RowCount - 1] := GRows[x].RemName;
-
-            end;
-
-         GRows.DisposeOf;
+         SGAndroid64.Sort(0, TSortDirection.sdAscending);
+         SGAndroid64.EndUpdate;
 
       end;
 
@@ -1643,37 +1586,22 @@ begin
    then
       begin
 
-         for i := 1 to SGAndroid32.RowCount - 1 do
-            begin
+         SGAndroid32.BeginUpdate;
 
-               GRow.Source := SGAndroid32.Cells[0, i];
-               GRow.Target := SGAndroid32.Cells[1, i];
-               GRow.Conf := SGAndroid32.Cells[3, i];
-               GRow.Subd := SGAndroid32.Cells[2, i];
-               GRow.RemName := SGAndroid32.Cells[4, i];
-
-               GRows.Add(GRow);
-
-            end;
-
-         for i := 1 to SGAndroid64.RowCount - 1 do
-            if (i >= SGAndroid64.Selection.Top) and
-               (i <= SGAndroid64.Selection.Bottom) and
-               (SGAndroid64.RowHeights[i] <> 0)
-            then
+         for i := 0 to SGAndroid64.SelectedRowCount - 1  do
                begin
 
                   Skip := False;
                   OverRideFile := False;
 
-                  for x := 0 to GRows.Count - 1 do
-                     if GRows[x].Source = SGAndroid64.Cells[0, i]
+                  for x := 1 to SGAndroid32.RowCount - 1 do
+                     if SGAndroid32.Cells[0, x] = SGAndroid64.Cells[0, SGAndroid64.SelectedRow[i]]
                      then
-                        if ((SGAndroid64.Cells[3, i] = 'All') and
-                            ((GRows[x].Conf = 'All') or
-                             (GRows[x].Conf = 'Release') or
-                             (GRows[x].Conf = 'Debug'))) or
-                           (GRows[x].Conf = SGAndroid64.Cells[3, i])
+                        if ((SGAndroid64.Cells[3, SGAndroid64.SelectedRow[i]] = 'All') and
+                            ((SGAndroid32.Cells[3, x] = 'All') or
+                             (SGAndroid32.Cells[3, x] = 'Release') or
+                             (SGAndroid32.Cells[3, x] = 'Debug'))) or
+                           (SGAndroid32.Cells[3, x] = SGAndroid64.Cells[3, SGAndroid64.SelectedRow[i]])
                         then
                            begin
 
@@ -1687,15 +1615,12 @@ begin
                                  else
                                     begin
 
-                                       AdvSmoothMessageDialog1.HTMLText.Text := 'Source Path "' + GRows[x].Source + '" for ' + GRows[x].Conf + ' configuration allready exist';
+                                       AdvSmoothMessageDialog1.HTMLText.Text := 'Source Path "' + SGAndroid32.Cells[0, x] + '" for ' + SGAndroid32.Cells[3, x] + ' configuration allready exist';
 
                                        case AdvSmoothMessageDialog1.ExecuteDialog of
 
                                           104:
-                                             begin
-                                                GRows.DisposeOf;
-                                                Exit;
-                                             end;
+                                             Exit;
 
                                           100: OverRideFile := True;
 
@@ -1729,48 +1654,39 @@ begin
                   then
                      begin
 
-                        for x := GRows.Count - 1 downto 0 do
-                           if GRows[x].Source = SGAndroid64.Cells[0, i]
+                        for x := SGAndroid32.RowCount - 1 downto 1 do
+                           if SGAndroid32.Cells[0, x] = SGAndroid64.Cells[0, SGAndroid64.SelectedRow[i]]
                            then
-                              if ((SGAndroid64.Cells[3, i] = 'All') and
-                                  ((GRows[x].Conf = 'All') or
-                                   (GRows[x].Conf = 'Release') or
-                                   (GRows[x].Conf = 'Debug'))) or
-                                 (GRows[x].Conf = SGAndroid64.Cells[3, i])
+                              if ((SGAndroid64.Cells[3, SGAndroid64.SelectedRow[i]] = 'All') and
+                                  ((SGAndroid32.Cells[3, x] = 'All') or
+                                   (SGAndroid32.Cells[3, x] = 'Release') or
+                                   (SGAndroid32.Cells[3, x] = 'Debug'))) or
+                                 (SGAndroid32.Cells[3, x] = SGAndroid64.Cells[3, SGAndroid64.SelectedRow[i]])
                               then
-                                 GRows.Delete(x);
+                                 SGAndroid32.RemoveRows(x, 1);
 
                      end;
 
-                  GRow.Source := SGAndroid64.Cells[0, i];
-                  GRow.Target := SGAndroid64.Cells[1, i];
-                  GRow.Conf := SGAndroid64.Cells[3, i];
-                  GRow.Subd := SGAndroid64.Cells[2, i];
-                  GRow.RemName := SGAndroid64.Cells[4, i];
+                  if SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] <> ''
+                  then
+                     SGAndroid32.AddRow;
 
-                  GRows.Add(GRow);
+                  SGAndroid32.Cells[0, SGAndroid64.RowCount - 1] := SGAndroid64.Cells[0, SGAndroid64.SelectedRow[i]];
+
+                  if SGAndroid64.Cells[1, i] = 'library\lib\arm64-v8a'
+                  then
+                     SGAndroid32.Cells[1, SGAndroid64.RowCount - 1] := 'library\lib\armeabi-v7a'
+                  else
+                     SGAndroid32.Cells[1, SGAndroid64.RowCount - 1] := SGAndroid64.Cells[1, SGAndroid64.SelectedRow[i]];
+
+                  SGAndroid32.Cells[2, SGAndroid64.RowCount - 1] := SGAndroid64.Cells[2, SGAndroid64.SelectedRow[i]];
+                  SGAndroid32.Cells[3, SGAndroid64.RowCount - 1] := SGAndroid64.Cells[3, SGAndroid64.SelectedRow[i]];
+                  SGAndroid32.Cells[4, SGAndroid64.RowCount - 1] := SGAndroid64.Cells[4, SGAndroid64.SelectedRow[i]];
 
                end;
 
-         SGAndroid32.RowCount := 2;
-         SGAndroid32.Rows[1].Clear;
-
-         for x := 0 to GRows.Count - 1 do
-            begin
-
-               if SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] <> ''
-               then
-                  SGAndroid32.RowCount := SGAndroid32.RowCount + 1;
-
-               SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] := GRows[x].Source;
-               SGAndroid32.Cells[1, SGAndroid32.RowCount - 1] := GRows[x].Target;
-               SGAndroid32.Cells[3, SGAndroid32.RowCount - 1] := GRows[x].Conf;
-               SGAndroid32.Cells[2, SGAndroid32.RowCount - 1] := GRows[x].Subd;
-               SGAndroid32.Cells[4, SGAndroid32.RowCount - 1] := GRows[x].RemName;
-
-            end;
-
-         GRows.DisposeOf;
+         SGAndroid32.Sort(0,TSortDirection.sdAscending);
+         SGAndroid32.EndUpdate;
 
       end;
 
@@ -2108,6 +2024,113 @@ begin
 //      end;
 
    ShowASMDMessage('Done');
+
+end;
+
+procedure TFormMain.BCompareClick(Sender: TObject);
+
+var
+   i, x: integer;
+   FileRec: TFileRec;
+   Swapped: Boolean;
+
+begin
+
+   Andr32Items.Clear;
+   Andr64Items.Clear;
+
+   for i := 1 to SGAndroid32.RowCount - 1 do
+      begin
+
+         FileRec.SourcPath := SGAndroid32.Cells[0, i];
+         FileRec.TargetDir := SGAndroid32.Cells[1, i];
+         FileRec.Configurations := SGAndroid32.Cells[3, i];
+         FileRec.RemoteName := SGAndroid32.Cells[4, i];
+
+         Andr32Items.Add(FileRec);
+
+      end;
+
+   Swapped := True;
+
+   while Swapped do
+      begin
+
+         Swapped := False;
+
+         for i := 0 to Andr32Items.Count - 2 do
+            if Andr32Items[i].SourcPath > Andr32Items[i + 1].SourcPath
+            then
+               begin
+                  Andr32Items.Exchange(i, i + 1);
+                  Swapped := True;
+               end;
+
+      end;
+
+   for i := 1 to SGAndroid64.RowCount - 1 do
+      begin
+
+         FileRec.SourcPath := SGAndroid64.Cells[0, i];
+         FileRec.TargetDir := SGAndroid64.Cells[1, i];
+         FileRec.Configurations := SGAndroid64.Cells[3, i];
+         FileRec.RemoteName := SGAndroid64.Cells[4, i];
+
+         Andr64Items.Add(FileRec);
+
+      end;
+
+   Swapped := True;
+
+   while Swapped do
+      begin
+
+         Swapped := False;
+
+         for i := 0 to Andr64Items.Count - 2 do
+            if Andr64Items[i].SourcPath > Andr64Items[i + 1].SourcPath
+            then
+               begin
+                  Andr64Items.Exchange(i, i + 1);
+                  Swapped := True;
+               end;
+
+
+      end;
+
+   i := 0;
+   x := 0;
+
+   FCompare.SGCompAndr32.RowCount := 2;
+   FCompare.SGCompAndr32.ClearRows(1, 1);
+   FCompare.SGCompAndr64.RowCount := 2;
+   FCompare.SGCompAndr64.ClearRows(1, 1);
+
+   while True do
+      begin
+
+         if Andr32Items[i].SourcPath <> Andr64Items[x].SourcPath
+         then
+            begin
+
+            end;
+
+         if FCompare.SGCompAndr32.Cells[0, FCompare.SGCompAndr32.RowCount - 1] <> ''
+         then
+            FCompare.SGCompAndr32.RowCount := FCompare.SGCompAndr32.RowCount + 1;
+
+
+         if (i < Andr32Items.Count)
+         then
+            Inc(i);
+
+      end;
+
+   SGAndroid32.Cells[0, 0] := 'Source Path';
+   SGAndroid32.Cells[1, 0] := 'Target Directory';
+   SGAndroid32.Cells[2, 0] := 'SubDirs';
+   SGAndroid32.Cells[3, 0] := 'Configurations';
+   SGAndroid32.Cells[4, 0] := 'Remote Name';
 
 end;
 
