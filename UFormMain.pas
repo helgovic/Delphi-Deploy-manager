@@ -1683,21 +1683,21 @@ begin
                   then
                      SGAndroid32.AddRow;
 
-                  SGAndroid32.Cells[0, SGAndroid64.RowCount - 1] := SGAndroid64.Cells[0, SGAndroid64.SelectedRow[i]];
+                  SGAndroid32.Cells[0, SGAndroid32.RowCount - 1] := SGAndroid64.Cells[0, SGAndroid64.SelectedRow[i]];
 
-                  if SGAndroid64.Cells[1, i] = 'library\lib\arm64-v8a'
+                  if SGAndroid64.Cells[1, SGAndroid64.SelectedRow[i]] = 'library\lib\arm64-v8a'
                   then
-                     SGAndroid32.Cells[1, SGAndroid64.RowCount - 1] := 'library\lib\armeabi-v7a'
+                     SGAndroid32.Cells[1, SGAndroid32.RowCount - 1] := 'library\lib\armeabi-v7a'
                   else
-                     SGAndroid32.Cells[1, SGAndroid64.RowCount - 1] := SGAndroid64.Cells[1, SGAndroid64.SelectedRow[i]];
+                     SGAndroid32.Cells[1, SGAndroid32.RowCount - 1] := SGAndroid64.Cells[1, SGAndroid64.SelectedRow[i]];
 
-                  SGAndroid32.Cells[2, SGAndroid64.RowCount - 1] := SGAndroid64.Cells[2, SGAndroid64.SelectedRow[i]];
-                  SGAndroid32.Cells[3, SGAndroid64.RowCount - 1] := SGAndroid64.Cells[3, SGAndroid64.SelectedRow[i]];
-                  SGAndroid32.Cells[4, SGAndroid64.RowCount - 1] := SGAndroid64.Cells[4, SGAndroid64.SelectedRow[i]];
+                  SGAndroid32.Cells[2, SGAndroid32.RowCount - 1] := SGAndroid64.Cells[2, SGAndroid64.SelectedRow[i]];
+                  SGAndroid32.Cells[3, SGAndroid32.RowCount - 1] := SGAndroid64.Cells[3, SGAndroid64.SelectedRow[i]];
+                  SGAndroid32.Cells[4, SGAndroid32.RowCount - 1] := SGAndroid64.Cells[4, SGAndroid64.SelectedRow[i]];
 
                end;
 
-         SGAndroid32.Sort(0,TSortDirection.sdAscending);
+         SGAndroid32.Sort(0, TSortDirection.sdAscending);
          SGAndroid32.EndUpdate;
 
       end;
