@@ -37,7 +37,6 @@ type
     BTransfer: TButton;
     FEProjFile: TAdvFileNameEdit;
     LERemName: TLabeledEdit;
-    Button1: TButton;
     BSaveTargetDir: TButton;
     ImageList1: TImageList;
     BSaveRemName: TButton;
@@ -68,7 +67,6 @@ type
     procedure CBIncludeClick(Sender: TObject);
     procedure BSaveClick(Sender: TObject);
     procedure BTransferClick(Sender: TObject);
-    procedure Button1Click(Sender: TObject);
     procedure BSaveTargetDirClick(Sender: TObject);
     procedure BSaveRemNameClick(Sender: TObject);
     procedure SBSearchInvokeSearch(Sender: TObject);
@@ -106,6 +104,9 @@ implementation
 {$R *.dfm}
 
 uses UFCompare;
+
+var
+   TmpFile: String;
 
 function IsFileInUse(FileName: TFileName): Boolean;
 var
@@ -559,12 +560,15 @@ begin
    FEProjFile.Text := StringReplace(FEProjFile.Text, '"', '', [rfReplaceAll]);
    FEProjFile.OnChange := FEProjFileChange;
 
+   TmpFile := StrBefore(ExtractFileExt(FEProjFile.Text), FEProjFile.Text) + 'tmp.dproj';
+   CopyFile(PChar(FEProjFile.Text), PChar(TmpFile), False);
+
    SGAndroid32.BeginUpdate;
    SGAndroid64.BeginUpdate;
 
-   if FileExists(FEProjFile.Text)
+   if FileExists(TmpFile)
    then
-      if StringReplace(ExtractFileExt(FEProjFile.Text), '"', '', [rfReplaceAll]) = '.dproj'
+      if StringReplace(ExtractFileExt(TmpFile), '"', '', [rfReplaceAll]) = '.dproj'
       then
          begin
 
@@ -574,7 +578,7 @@ begin
             SGAndroid64.ClearRows(1, 1);
 
             SLLinesIn := TStringList.Create;
-            SLLinesIn.LoadFromFile(FEProjFile.Text);
+            SLLinesIn.LoadFromFile(TmpFile);
 
             i := 0;
 
@@ -966,7 +970,7 @@ begin
    SLLinesIn := TStringList.Create;
    SLLINETmp := TStringList.Create;
 
-   SLLinesIn.LoadFromFile(FEProjFile.Text);
+   SLLinesIn.LoadFromFile(TmpFile);
 
    y := 0;
 
@@ -975,33 +979,36 @@ begin
 
          if Pos('<DeployFile', SLLinesIn[y]) > 0
          then
-            if Pos('Class="File"', SLLinesIn[y]) > 0
-            then
-               begin
+            begin
 
-                  while Pos('</DeployFile>', SLLinesIn[y]) = 0 do
-                     Inc(y);
+               if Pos('Class="File"', SLLinesIn[y]) > 0
+               then
+                  begin
 
-               end
-            else
-               begin
-
-                  while Pos('</DeployFile>', SLLinesIn[y]) = 0 do
-                     begin
-
-                        SLLINETmp.Add(SLLinesIn[y]);
-
+                     while Pos('</DeployFile>', SLLinesIn[y]) = 0 do
                         Inc(y);
 
-                     end;
+                  end
+               else
+                  begin
 
-                  SLLINETmp.Add(SLLinesIn[y]);
+                     while (Pos('</DeployFile>', SLLinesIn[y]) = 0) and (not Trim(SLLinesIn[y]).EndsWith('/>')) do
+                        begin
 
-               end
+                           SLLINETmp.Add(SLLinesIn[y]);
+
+                           Inc(y);
+
+                        end;
+
+                     SLLINETmp.Add(SLLinesIn[y]);
+
+                  end
+            end
          else
             SLLINETmp.Add(SLLinesIn[y]);
 
-         Inc(y);
+            Inc(y);
 
       end;
 
@@ -1010,7 +1017,7 @@ begin
 
          if Pos(':\', SGAndroid32.Cells[0, i]) = 0
          then
-            FullName := ExtractFilePath(FEProjFile.Text) + SGAndroid32.Cells[0, i]
+            FullName := ExtractFilePath(TmpFile) + SGAndroid32.Cells[0, i]
          else
             FullName := SGAndroid32.Cells[0, i];
 
@@ -1027,11 +1034,11 @@ begin
                for x := 0 to High(FileList) do
                   begin
 
-                     if Pos(ExtractFilePath(FEProjFile.Text), FileList[x]) > 0
+                     if Pos(ExtractFilePath(TmpFile), FileList[x]) > 0
                      then
                         begin
 
-                           TmpStr := ExtractFilePath(FEProjFile.Text) + SGAndroid32.Cells[0, i] + '\';
+                           TmpStr := ExtractFilePath(TmpFile) + SGAndroid32.Cells[0, i] + '\';
                            TmpStr := StrAfter(TmpStr, FileList[x]);
                            TmpStr := Copy(ExtractFilePath(TmpStr), 1, Length(ExtractFilePath(TmpStr)) - 1);
 
@@ -1041,7 +1048,7 @@ begin
                            else
                               TmpStr := SGAndroid32.Cells[1, i];
 
-                           ShortName := StrAfter(ExtractFilePath(FEProjFile.Text), FileList[x]);
+                           ShortName := StrAfter(ExtractFilePath(TmpFile), FileList[x]);
 
                         end
                      else
@@ -1156,7 +1163,7 @@ begin
 
          if Pos(':\', SGAndroid64.Cells[0, i]) = 0
          then
-            FullName := ExtractFilePath(FEProjFile.Text) + SGAndroid64.Cells[0, i]
+            FullName := ExtractFilePath(TmpFile) + SGAndroid64.Cells[0, i]
          else
             FullName := SGAndroid64.Cells[0, i];
 
@@ -1173,11 +1180,11 @@ begin
                for x := 0 to High(FileList) do
                   begin
 
-                     if Pos(ExtractFilePath(FEProjFile.Text), FileList[x]) > 0
+                     if Pos(ExtractFilePath(TmpFile), FileList[x]) > 0
                      then
                         begin
 
-                           TmpStr := ExtractFilePath(FEProjFile.Text) + SGAndroid64.Cells[0, i] + '\';
+                           TmpStr := ExtractFilePath(TmpFile) + SGAndroid64.Cells[0, i] + '\';
                            TmpStr := StrAfter(TmpStr, FileList[x]);
                            TmpStr := Copy(ExtractFilePath(TmpStr), 1, Length(ExtractFilePath(TmpStr)) - 1);
 
@@ -1187,7 +1194,7 @@ begin
                            else
                               TmpStr := SGAndroid64.Cells[1, i];
 
-                           ShortName := StrAfter(ExtractFilePath(FEProjFile.Text), FileList[x]);
+                           ShortName := StrAfter(ExtractFilePath(TmpFile), FileList[x]);
 
                         end
                      else
@@ -1304,7 +1311,12 @@ begin
 
       end;
 
-   SLLINETmp.SaveToFile(FEProjFile.Text);
+   SLLINETmp.SaveToFile(TmpFile);
+
+   CopyFile(PChar(TmpFile), PChar(FEProjFile.Text), False);
+
+   DeleteFile(TmpFile);
+
    ShowASMDMessage('Done. Backup of project file located in ' + SaveFile);
 
 end;
@@ -1689,341 +1701,6 @@ begin
          SGAndroid32.EndUpdate;
 
       end;
-
-end;
-
-procedure TFormMain.Button1Click(Sender: TObject);
-
-var
-   i: Integer;
-   FileList: TArray<String>;
-   InFile, OutFile: TextFile;
-   LineIn, LineOut: string;
-
-begin
-
-//   AssignFile(OutFile, 'D:\Deplhi\Explorer\Resources\res foren\TranslationTo.txt');
-//   Rewrite(OutFile);
-//   FileList := TDirectory.GetFiles('D:\Deplhi\Explorer\Resources\res foren', 'Strings.xml', TSearchOption.soAllDirectories);
-//
-//   for i := 0 to High(FileList) do
-//      begin
-//
-//         LineOut := StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren\Values-', FileList[i]));
-//         WriteLn(OutFile, LineOut);
-
-//         AssignFile(InFile, FileList[i]);
-//         Reset(InFile);
-//
-//         while not Eof(InFile) do
-//            begin
-//
-//               ReadLn(InFile, LineIn);
-//
-//               if Pos('<plurals name=', LineIn) > 0
-//               then
-//                  begin
-//
-//                     ReadLn(InFile, LineIn);
-//                     ReadLn(InFile, LineIn);
-//                     ReadLn(InFile, LineIn);
-//
-//                     if Pos('</plurals>', LineIn) = 0
-//                     then
-//                        begin
-//                           LineOut := FileList[i];
-//                           WriteLn(OutFile, LineOut);
-//                           Break;
-//                        end;
-//
-//                  end;
-//
-//            end;
-//
-//         CloseFile(InFile);
-
-//      end;
-//
-//   CloseFile(OutFile);
-
-//   FileList := TDirectory.GetFiles('D:\Deplhi\Explorer\Resources\res foren - Kopi', 'Plurals.xml', TSearchOption.soAllDirectories);
-//
-//   for i := 0 to High(FileList) do
-//      begin
-//
-//         AssignFile(InFile, FileList[i]);
-//         Reset(InFile);
-//         AssignFile(OutFile, ExtractFilePath(FileList[i]) + StrBefore('.xml', ExtractFileName(FileList[i])) + 'tmp.xml');
-//         Rewrite(OutFile);
-//
-//         while not Eof(InFile) do
-//            begin
-//
-//               ReadLn(InFile, LineIn);
-//               WriteLn(OutFile, LineIn);
-//
-//               if Pos('<plurals name=', LineIn) > 0
-//               then
-//                  begin
-//
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'ar'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="zero">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="one">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="two">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="few">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="many">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'cs'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="one">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="few">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="many">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'hr'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="one">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="few">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'id'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'in'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'iw'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="one">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="two">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="many">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'ja'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'ko'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'lt-rLT'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="one">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="few">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="many">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'ml'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="one">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'pl'
-//                     then
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'ro'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="one">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="few">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'ru'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="one">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="few">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="many">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'sk'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="one">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="few">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="many">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'sr'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="one">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="few">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                     if StrBefore('\', StrAfter('D:\Deplhi\Explorer\Resources\res foren - Kopi\Values-', FileList[i])) = 'th'
-//                     then
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end
-//                     else
-//                        begin
-//
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="other">', []);
-//                           WriteLn(OutFile, LineOut);
-//                           ReadLn(InFile, LineIn);
-//                           LineOut := StringReplace(LineIn, '<item>', '<item quantity="one">', []);
-//                           WriteLn(OutFile, LineOut);
-//
-//                        end;
-//
-//                  end;
-//
-//            end;
-//
-//         CloseFile(InFile);
-//         CloseFile(OutFile);
-//
-//         DeleteFile(FileList[i]);
-//         RenameFile(ExtractFilePath(FileList[i]) + StrBefore('.xml', ExtractFileName(FileList[i])) + 'tmp.xml', FileList[i]);
-//
-//      end;
-
-   ShowASMDMessage('Done');
 
 end;
 

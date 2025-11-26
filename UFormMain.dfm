@@ -3,7 +3,7 @@ object FormMain: TFormMain
   Top = 0
   BorderStyle = bsToolWindow
   Caption = 'Deploy Manager'
-  ClientHeight = 526
+  ClientHeight = 577
   ClientWidth = 1079
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -11,11 +11,10 @@ object FormMain: TFormMain
   Font.Height = -11
   Font.Name = 'Tahoma'
   Font.Style = []
-  OldCreateOrder = False
   Position = poDesktopCenter
   Visible = True
+  OnActivate = FormActivate
   OnCreate = FormCreate
-  PixelsPerInch = 96
   TextHeight = 13
   object Panel1: TPanel
     Left = 0
@@ -24,7 +23,6 @@ object FormMain: TFormMain
     Height = 177
     Align = alTop
     TabOrder = 0
-    ExplicitLeft = 32
     object Label2: TLabel
       Left = 139
       Top = 115
@@ -49,19 +47,19 @@ object FormMain: TFormMain
     object BAddFile: TButton
       Left = 6
       Top = 60
-      Width = 95
+      Width = 110
       Height = 43
       Caption = 'Add File'
-      TabOrder = 0
+      TabOrder = 5
       OnClick = BAddFileClick
     end
     object BAddFolder: TButton
-      Left = 103
+      Left = 118
       Top = 60
-      Width = 95
+      Width = 110
       Height = 43
       Caption = 'Add Folder'
-      TabOrder = 1
+      TabOrder = 6
       OnClick = BAddFolderClick
     end
     object CBInclude: TCheckBox
@@ -74,19 +72,19 @@ object FormMain: TFormMain
       Enabled = False
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 2
+      TabOrder = 11
       OnClick = CBIncludeClick
     end
     object CBConf: TComboBox
       Left = 139
-      Top = 134
+      Top = 132
       Width = 167
       Height = 21
       Hint = 'Change configuration for selected files/folders'
       ItemIndex = 0
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 3
+      TabOrder = 12
       Text = 'All'
       OnChange = CBConfChange
       Items.Strings = (
@@ -95,30 +93,30 @@ object FormMain: TFormMain
         'Release')
     end
     object BDelSel: TButton
-      Left = 202
+      Left = 230
       Top = 60
-      Width = 95
+      Width = 110
       Height = 43
       Caption = 'Delete Selected'
-      TabOrder = 5
+      TabOrder = 7
       OnClick = BDelSelClick
     end
     object BSave: TButton
-      Left = 402
+      Left = 454
       Top = 60
-      Width = 95
+      Width = 110
       Height = 43
       Caption = 'Save'
-      TabOrder = 6
+      TabOrder = 9
       OnClick = BSaveClick
     end
     object BTransfer: TButton
-      Left = 303
+      Left = 342
       Top = 60
-      Width = 95
+      Width = 110
       Height = 43
       Caption = 'Copy selected to other platform'
-      TabOrder = 7
+      TabOrder = 8
       WordWrap = True
       OnClick = BTransferClick
     end
@@ -147,7 +145,7 @@ object FormMain: TFormMain
       ParentShowHint = False
       ReadOnly = False
       ShowHint = True
-      TabOrder = 8
+      TabOrder = 0
       Text = ''
       Visible = True
       OnChange = FEProjFileChange
@@ -222,17 +220,8 @@ object FormMain: TFormMain
       EditLabel.Caption = 'Remote Name'
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 9
-    end
-    object Button1: TButton
-      Left = 1002
-      Top = 16
-      Width = 57
-      Height = 33
-      Caption = 'Button1'
-      TabOrder = 10
-      Visible = False
-      OnClick = Button1Click
+      TabOrder = 15
+      Text = ''
     end
     object BSaveTargetDir: TButton
       Left = 516
@@ -247,7 +236,7 @@ object FormMain: TFormMain
       PressedImageIndex = 0
       SelectedImageIndex = 0
       ShowHint = True
-      TabOrder = 11
+      TabOrder = 14
       OnClick = BSaveTargetDirClick
     end
     object BSaveRemName: TButton
@@ -263,7 +252,7 @@ object FormMain: TFormMain
       PressedImageIndex = 0
       SelectedImageIndex = 0
       ShowHint = True
-      TabOrder = 12
+      TabOrder = 16
       OnClick = BSaveRemNameClick
     end
     object SBSearch: TSearchBox
@@ -274,7 +263,7 @@ object FormMain: TFormMain
       AutoSize = False
       BevelInner = bvNone
       BevelOuter = bvNone
-      TabOrder = 13
+      TabOrder = 17
       OnKeyUp = SBSearchKeyUp
       OnInvokeSearch = SBSearchInvokeSearch
     end
@@ -292,7 +281,7 @@ object FormMain: TFormMain
       PressedImageIndex = 2
       SelectedImageIndex = 2
       ShowHint = True
-      TabOrder = 14
+      TabOrder = 19
       OnClick = BNextClick
     end
     object BPrevious: TButton
@@ -309,7 +298,7 @@ object FormMain: TFormMain
       PressedImageIndex = 1
       SelectedImageIndex = 1
       ShowHint = True
-      TabOrder = 15
+      TabOrder = 18
       OnClick = BPreviousClick
     end
     object BRefresh: TButton
@@ -322,24 +311,24 @@ object FormMain: TFormMain
       Images = ImageList1
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 16
+      TabOrder = 1
       OnClick = BRefreshClick
     end
     object LETargetDir: TComboBox
       Left = 314
-      Top = 134
+      Top = 132
       Width = 200
       Height = 21
       Hint = 'Change target directory for selected files/folders'
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 4
+      TabOrder = 13
       Text = '.\'
       Items.Strings = (
         '.\')
     end
     object LEFilter: TLabeledEdit
-      Left = 693
+      Left = 697
       Top = 22
       Width = 200
       Height = 21
@@ -349,7 +338,8 @@ object FormMain: TFormMain
       EditLabel.Caption = 'Filter text'
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 17
+      TabOrder = 3
+      Text = ''
       OnChange = LEFilterChange
     end
     object CBFilterCol: TComboBox
@@ -360,7 +350,7 @@ object FormMain: TFormMain
       Hint = 'Change configuration for selected files/folders'
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 18
+      TabOrder = 2
       OnChange = CBFilterColChange
     end
     object BClearFilter: TButton
@@ -373,13 +363,23 @@ object FormMain: TFormMain
       Images = ImageList1
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 19
+      TabOrder = 4
       OnClick = BClearFilterClick
+    end
+    object BCompare: TButton
+      Left = 566
+      Top = 60
+      Width = 110
+      Height = 43
+      Caption = 'Compare Platforms'
+      TabOrder = 10
+      Visible = False
+      OnClick = BCompareClick
     end
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Top = 507
+    Top = 558
     Width = 1079
     Height = 19
     Panels = <>
@@ -388,7 +388,7 @@ object FormMain: TFormMain
     Left = 0
     Top = 177
     Width = 1079
-    Height = 330
+    Height = 381
     Fill.Color = 3486515
     Fill.ColorTo = 3486515
     Fill.ColorMirror = 3486515
@@ -410,12 +410,12 @@ object FormMain: TFormMain
     TabSettings.StartMargin = 4
     TabReorder = False
     OnChange = ASPConfChange
-    TabOrder = 2
+    TabOrder = 1
     object ASPPAndroid32: TAdvSmoothTabPage
       Left = 0
       Top = 26
       Width = 1079
-      Height = 303
+      Height = 354
       Caption = 'Android 32'
       PageAppearance.Color = 3486515
       PageAppearance.ColorTo = 3486515
@@ -463,28 +463,124 @@ object FormMain: TFormMain
       TabAppearance.ColorTextHot = clWhite
       TabAppearance.ColorTextDisabled = clWhite
       TabAppearance.ColorTextSelected = clWhite
-      object SGAndroid32: TStringGrid
+      object SGAndroid32: TAdvStringGrid
         Left = 2
         Top = 2
         Width = 1075
-        Height = 299
+        Height = 350
+        Cursor = crDefault
         Align = alClient
-        BevelInner = bvSpace
+        BevelEdges = []
+        BevelInner = bvNone
         BevelOuter = bvNone
         BorderStyle = bsNone
+        Color = clWhite
+        Ctl3D = True
+        DefaultRowHeight = 24
+        DefaultDrawing = True
+        DrawingStyle = gdsClassic
         FixedCols = 0
         RowCount = 2
-        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSelect]
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clBlack
+        Font.Height = -11
+        Font.Name = 'Tahoma'
+        Font.Style = []
+        Options = [goVertLine, goHorzLine, goRangeSelect, goRowSelect]
+        ParentCtl3D = False
+        ParentFont = False
+        ScrollBars = ssVertical
         TabOrder = 0
         OnSelectCell = SGAndroid32SelectCell
-        ExplicitTop = 1
+        GridLineColor = 15987699
+        GridFixedLineColor = 15987699
+        HoverRowCells = [hcNormal, hcSelected]
+        ActiveCellFont.Charset = DEFAULT_CHARSET
+        ActiveCellFont.Color = clWindowText
+        ActiveCellFont.Height = -11
+        ActiveCellFont.Name = 'Tahoma'
+        ActiveCellFont.Style = [fsBold]
+        ControlLook.FixedGradientHoverFrom = clGray
+        ControlLook.FixedGradientHoverTo = clWhite
+        ControlLook.FixedGradientDownFrom = clGray
+        ControlLook.FixedGradientDownTo = clSilver
+        ControlLook.DropDownHeader.Font.Charset = DEFAULT_CHARSET
+        ControlLook.DropDownHeader.Font.Color = clWindowText
+        ControlLook.DropDownHeader.Font.Height = -11
+        ControlLook.DropDownHeader.Font.Name = 'Tahoma'
+        ControlLook.DropDownHeader.Font.Style = []
+        ControlLook.DropDownHeader.Visible = True
+        ControlLook.DropDownHeader.Buttons = <>
+        ControlLook.DropDownFooter.Font.Charset = DEFAULT_CHARSET
+        ControlLook.DropDownFooter.Font.Color = clWindowText
+        ControlLook.DropDownFooter.Font.Height = -11
+        ControlLook.DropDownFooter.Font.Name = 'Tahoma'
+        ControlLook.DropDownFooter.Font.Style = []
+        ControlLook.DropDownFooter.Visible = True
+        ControlLook.DropDownFooter.Buttons = <>
+        Filter = <
+          item
+            Column = 0
+            CaseSensitive = False
+            Operation = foSHORT
+            Method = fmExpression
+          end>
+        FilterDropDown.Font.Charset = DEFAULT_CHARSET
+        FilterDropDown.Font.Color = clWindowText
+        FilterDropDown.Font.Height = -11
+        FilterDropDown.Font.Name = 'Tahoma'
+        FilterDropDown.Font.Style = []
+        FilterDropDownClear = '(All)'
+        FixedRowHeight = 24
+        FixedFont.Charset = DEFAULT_CHARSET
+        FixedFont.Color = clBlack
+        FixedFont.Height = -11
+        FixedFont.Name = 'Tahoma'
+        FixedFont.Style = [fsBold]
+        FloatFormat = '%.2f'
+        PrintSettings.DateFormat = 'dd/mm/yyyy'
+        PrintSettings.Font.Charset = DEFAULT_CHARSET
+        PrintSettings.Font.Color = clWindowText
+        PrintSettings.Font.Height = -11
+        PrintSettings.Font.Name = 'Tahoma'
+        PrintSettings.Font.Style = []
+        PrintSettings.FixedFont.Charset = DEFAULT_CHARSET
+        PrintSettings.FixedFont.Color = clWindowText
+        PrintSettings.FixedFont.Height = -11
+        PrintSettings.FixedFont.Name = 'Tahoma'
+        PrintSettings.FixedFont.Style = []
+        PrintSettings.HeaderFont.Charset = DEFAULT_CHARSET
+        PrintSettings.HeaderFont.Color = clWindowText
+        PrintSettings.HeaderFont.Height = -11
+        PrintSettings.HeaderFont.Name = 'Tahoma'
+        PrintSettings.HeaderFont.Style = []
+        PrintSettings.FooterFont.Charset = DEFAULT_CHARSET
+        PrintSettings.FooterFont.Color = clWindowText
+        PrintSettings.FooterFont.Height = -11
+        PrintSettings.FooterFont.Name = 'Tahoma'
+        PrintSettings.FooterFont.Style = []
+        PrintSettings.PageNumSep = '/'
+        SearchFooter.FindNextCaption = 'Find &next'
+        SearchFooter.FindPrevCaption = 'Find &previous'
+        SearchFooter.Font.Charset = DEFAULT_CHARSET
+        SearchFooter.Font.Color = clWindowText
+        SearchFooter.Font.Height = -11
+        SearchFooter.Font.Name = 'Tahoma'
+        SearchFooter.Font.Style = []
+        SearchFooter.HighLightCaption = 'Highlight'
+        SearchFooter.HintClose = 'Close'
+        SearchFooter.HintFindNext = 'Find next occurrence'
+        SearchFooter.HintFindPrev = 'Find previous occurrence'
+        SearchFooter.HintHighlight = 'Highlight occurrences'
+        SearchFooter.MatchCaseCaption = 'Match case'
+        Version = '6.2.1.1'
       end
     end
     object ASPPAndroid64: TAdvSmoothTabPage
       Left = 0
       Top = 26
       Width = 1079
-      Height = 303
+      Height = 354
       Caption = 'Android 64'
       PageAppearance.Color = 3486515
       PageAppearance.ColorTo = 3486515
@@ -531,20 +627,114 @@ object FormMain: TFormMain
       TabAppearance.ColorTextHot = clWhite
       TabAppearance.ColorTextDisabled = clWhite
       TabAppearance.ColorTextSelected = clWhite
-      object SGAndroid64: TStringGrid
+      object SGAndroid64: TAdvStringGrid
         Left = 2
         Top = 2
         Width = 1075
-        Height = 299
+        Height = 350
+        Cursor = crDefault
         Align = alClient
         BevelInner = bvSpace
         BevelOuter = bvNone
         BorderStyle = bsNone
+        Color = clWhite
+        DefaultRowHeight = 24
+        DefaultDrawing = True
+        DrawingStyle = gdsClassic
         FixedCols = 0
         RowCount = 2
-        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSelect]
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clBlack
+        Font.Height = -11
+        Font.Name = 'Tahoma'
+        Font.Style = []
+        Options = [goVertLine, goHorzLine, goRangeSelect, goRowSelect]
+        ParentFont = False
+        ScrollBars = ssVertical
         TabOrder = 0
         OnSelectCell = SGAndroid64SelectCell
+        GridLineColor = 15987699
+        GridFixedLineColor = 15987699
+        HoverRowCells = [hcNormal, hcSelected]
+        ActiveCellFont.Charset = DEFAULT_CHARSET
+        ActiveCellFont.Color = clWindowText
+        ActiveCellFont.Height = -11
+        ActiveCellFont.Name = 'Tahoma'
+        ActiveCellFont.Style = [fsBold]
+        ControlLook.FixedGradientHoverFrom = clGray
+        ControlLook.FixedGradientHoverTo = clWhite
+        ControlLook.FixedGradientDownFrom = clGray
+        ControlLook.FixedGradientDownTo = clSilver
+        ControlLook.DropDownHeader.Font.Charset = DEFAULT_CHARSET
+        ControlLook.DropDownHeader.Font.Color = clWindowText
+        ControlLook.DropDownHeader.Font.Height = -11
+        ControlLook.DropDownHeader.Font.Name = 'Tahoma'
+        ControlLook.DropDownHeader.Font.Style = []
+        ControlLook.DropDownHeader.Visible = True
+        ControlLook.DropDownHeader.Buttons = <>
+        ControlLook.DropDownFooter.Font.Charset = DEFAULT_CHARSET
+        ControlLook.DropDownFooter.Font.Color = clWindowText
+        ControlLook.DropDownFooter.Font.Height = -11
+        ControlLook.DropDownFooter.Font.Name = 'Tahoma'
+        ControlLook.DropDownFooter.Font.Style = []
+        ControlLook.DropDownFooter.Visible = True
+        ControlLook.DropDownFooter.Buttons = <>
+        Filter = <
+          item
+            Column = 0
+            CaseSensitive = False
+            Operation = foSHORT
+            Method = fmExpression
+          end>
+        FilterDropDown.Font.Charset = DEFAULT_CHARSET
+        FilterDropDown.Font.Color = clWindowText
+        FilterDropDown.Font.Height = -11
+        FilterDropDown.Font.Name = 'Tahoma'
+        FilterDropDown.Font.Style = []
+        FilterDropDownClear = '(All)'
+        FixedRowHeight = 24
+        FixedFont.Charset = DEFAULT_CHARSET
+        FixedFont.Color = clBlack
+        FixedFont.Height = -11
+        FixedFont.Name = 'Tahoma'
+        FixedFont.Style = [fsBold]
+        FloatFormat = '%.2f'
+        PrintSettings.DateFormat = 'dd/mm/yyyy'
+        PrintSettings.Font.Charset = DEFAULT_CHARSET
+        PrintSettings.Font.Color = clWindowText
+        PrintSettings.Font.Height = -11
+        PrintSettings.Font.Name = 'Tahoma'
+        PrintSettings.Font.Style = []
+        PrintSettings.FixedFont.Charset = DEFAULT_CHARSET
+        PrintSettings.FixedFont.Color = clWindowText
+        PrintSettings.FixedFont.Height = -11
+        PrintSettings.FixedFont.Name = 'Tahoma'
+        PrintSettings.FixedFont.Style = []
+        PrintSettings.HeaderFont.Charset = DEFAULT_CHARSET
+        PrintSettings.HeaderFont.Color = clWindowText
+        PrintSettings.HeaderFont.Height = -11
+        PrintSettings.HeaderFont.Name = 'Tahoma'
+        PrintSettings.HeaderFont.Style = []
+        PrintSettings.FooterFont.Charset = DEFAULT_CHARSET
+        PrintSettings.FooterFont.Color = clWindowText
+        PrintSettings.FooterFont.Height = -11
+        PrintSettings.FooterFont.Name = 'Tahoma'
+        PrintSettings.FooterFont.Style = []
+        PrintSettings.PageNumSep = '/'
+        SearchFooter.FindNextCaption = 'Find &next'
+        SearchFooter.FindPrevCaption = 'Find &previous'
+        SearchFooter.Font.Charset = DEFAULT_CHARSET
+        SearchFooter.Font.Color = clWindowText
+        SearchFooter.Font.Height = -11
+        SearchFooter.Font.Name = 'Tahoma'
+        SearchFooter.Font.Style = []
+        SearchFooter.HighLightCaption = 'Highlight'
+        SearchFooter.HintClose = 'Close'
+        SearchFooter.HintFindNext = 'Find next occurrence'
+        SearchFooter.HintFindPrev = 'Find previous occurrence'
+        SearchFooter.HintHighlight = 'Highlight occurrences'
+        SearchFooter.MatchCaseCaption = 'Match case'
+        Version = '6.2.1.1'
       end
     end
   end
@@ -932,12 +1122,8 @@ object FormMain: TFormMain
     Top = 401
   end
   object JvSelectDirectory1: TJvSelectDirectory
-    Left = 530
-    Top = 270
-  end
-  object JvGridFilter1: TJvGridFilter
-    Grid = SGAndroid32
-    Left = 528
-    Top = 266
+    Options = [sdPerformCreate, sdPrompt]
+    Left = 532
+    Top = 272
   end
 end

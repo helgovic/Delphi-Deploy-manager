@@ -1,15 +1,18 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BorlandProject>
 	<Transactions>
-    <Transaction>1899-12-30 00:00:00.000.836,C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Unit15.pas=D:\Deplhi\DeployMan\UFormMain.pas</Transaction>
     <Transaction>1899-12-30 00:00:00.000.996,=C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Unit15.pas</Transaction>
     <Transaction>1899-12-30 00:00:00.000.360,=C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Unit15.pas</Transaction>
-    <Transaction>1899-12-30 00:00:00.000.083,=C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Unit15.pas</Transaction>
-    <Transaction>1899-12-30 00:00:00.000.836,C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Unit15.dfm=D:\Deplhi\DeployMan\UFormMain.dfm</Transaction>
-    <Transaction>1899-12-30 00:00:00.000.939,C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Project16.dproj=D:\Deplhi\DeployMan\DeployMan.dproj</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.721,=C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Unit15.pas</Transaction>
     <Transaction>1899-12-30 00:00:00.000.484,=C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Unit15.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.083,=C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Unit15.pas</Transaction>
     <Transaction>1899-12-30 00:00:00.000.290,=C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Unit15.pas</Transaction>
     <Transaction>1899-12-30 00:00:00.000.181,=C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Unit15.pas</Transaction>
-    <Transaction>1899-12-30 00:00:00.000.721,=C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Unit15.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.836,D:\Deplhi\DeployMan\UFormMain.dfm=C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Unit15.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.933,D:\Deplhi\DeployMan\UFCompare.dfm=D:\Deplhi\DeployMan\Unit1.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.939,D:\Deplhi\DeployMan\DeployMan.dproj=C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Project16.dproj</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.152,=D:\Deplhi\DeployMan\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.836,D:\Deplhi\DeployMan\UFormMain.pas=C:\Users\Helge\Documents\Embarcadero\Studio\Projects\Unit15.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.933,D:\Deplhi\DeployMan\UFCompare.pas=D:\Deplhi\DeployMan\Unit1.pas</Transaction>
   </Transactions>
 </BorlandProject>
